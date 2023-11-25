@@ -263,7 +263,7 @@ bool exibir_veiculo(int rrn) {
 
     Veiculo v = recuperar_registro_veiculo(rrn);
 
-    printf("%s, %d\n", v.id_veiculo, rrn);
+    printf("%s, %s, %s, %s, %d, %d, %d, %.2lf\n", v.id_veiculo, v.marca, v.modelo, v.poder, v.velocidade, v.aceleracao, v.peso, v.preco);
     return true;
 }
 
@@ -691,8 +691,33 @@ void buscar_pista_id_menu(char *id_pista) {
 }
 
 void buscar_pista_nome_menu(char *nome_pista) {
-	/*IMPLEMENTE A FUNÇÃO AQUI*/
-	printf(ERRO_NAO_IMPLEMENTADO, "buscar_pista_nome_menu()");
+    // Criar uma chave de busca com o nome da pista fornecido
+    nome_pista_index chave;
+    strcpy(chave.nome, nome_pista);
+
+    // Realizar a busca binária no índice secundário nome_pista_idx
+    nome_pista_index *pista_encontrada = (nome_pista_index*) busca_binaria((void*)&chave, nome_pista_idx, qtd_registros_pistas, sizeof(nome_pista_index), qsort_nome_pista_idx, true, 0);
+
+    // Verificar se a pista foi encontrada no índice secundário
+    if (pista_encontrada == NULL) {
+        printf(ERRO_REGISTRO_NAO_ENCONTRADO);
+        return;
+    }
+
+    // Criar uma chave de busca com o ID da pista encontrada
+    pistas_index chave_primaria;
+    strcpy(chave_primaria.id_pista, pista_encontrada->id_pista);
+
+    // Realizar a busca binária no índice primário pistas_idx
+    pistas_index *pista_final = (pistas_index*) busca_binaria((void*)&chave_primaria, pistas_idx, qtd_registros_pistas, sizeof(pistas_index), qsort_pistas_idx, true, 0);
+
+    // Verificar se a pista foi encontrada no índice primário
+    if (pista_final == NULL || pista_final->rrn < 0) {
+        printf(ERRO_REGISTRO_NAO_ENCONTRADO);
+    } else {
+        // Exibir os detalhes da pista
+        exibir_pista(pista_final->rrn);
+    }
 }
 
 /* Listagem */
@@ -711,8 +736,39 @@ void listar_corredores_modelo_menu(char *modelo){
 }
 
 void listar_veiculos_compra_menu(char *id_corredor) {
-	/*IMPLEMENTE A FUNÇÃO AQUI*/
-	printf(ERRO_NAO_IMPLEMENTADO, "listar_veiculos_compra_menu()");
+    // Buscar o corredor pelo id_corredor fornecido
+    corredores_index chave;
+    strcpy(chave.id_corredor, id_corredor);
+    corredores_index *corredor_encontrado = (corredores_index*) bsearch(&chave, corredores_idx, qtd_registros_corredores, sizeof(corredores_index), qsort_corredores_idx);
+
+    // Se o corredor não for encontrado, imprimir a mensagem de erro
+    if (corredor_encontrado == NULL || corredor_encontrado->rrn < 0) {
+        printf(ERRO_REGISTRO_NAO_ENCONTRADO);
+        return;
+    }
+
+    // Recuperar o registro do corredor
+    Corredor corredor = recuperar_registro_corredor(corredor_encontrado->rrn);
+
+    // Verificar os veículos que o corredor pode comprar
+    bool veiculo_encontrado = false;
+    for (unsigned i = 0; i < qtd_registros_veiculos; ++i) {
+        veiculos_index chave_veiculo;
+        strcpy(chave_veiculo.id_veiculo, preco_veiculo_idx[i].id_veiculo);
+        veiculos_index *veiculo_idx = (veiculos_index*) bsearch(&chave_veiculo, veiculos_idx, qtd_registros_veiculos, sizeof(veiculos_index), qsort_veiculos_idx);
+        if (veiculo_idx != NULL && veiculo_idx->rrn >= 0) {
+            Veiculo veiculo = recuperar_registro_veiculo(veiculo_idx->rrn);
+            if (veiculo.preco <= corredor.saldo) {
+                exibir_veiculo(veiculo_idx->rrn);
+                veiculo_encontrado = true;
+            }
+        }
+    }
+
+    // Se nenhum veículo for encontrado, imprimir a mensagem de aviso
+    if (!veiculo_encontrado) {
+        printf(AVISO_NENHUM_REGISTRO_ENCONTRADO);
+    }
 }
 
 void listar_corridas_periodo_menu(char *data_inicio, char *data_fim) {
