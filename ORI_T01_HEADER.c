@@ -617,7 +617,7 @@ void comprar_veiculo_menu(char *id_corredor, char *id_veiculo) {
     // Adicionar o veículo à lista de veículos do corredor
     for (int i = 0; i < QTD_MAX_VEICULO; ++i) {
         if (corredor.veiculos[i][0] == '\0') {
-            strcpy(corredor.veiculos[i], veiculo.modelo);
+            sprintf(corredor.veiculos[i], "%s", veiculo.modelo);
             break;
         }
     }
@@ -724,8 +724,156 @@ void cadastrar_pista_menu(char *nome, int dificuldade, int distancia, int record
 }
 
 void executar_corrida_menu(char *id_pista, char *ocorrencia, char *id_corredores, char *id_veiculos) {
-	/*IMPLEMENTE A FUNÇÃO AQUI*/
-	printf(ERRO_NAO_IMPLEMENTADO, "executar_corrida_menu()");
+    // Verificar se a chave composta (id_pista e ocorrencia) já existe
+    corridas_index index_corrida;
+    strcpy(index_corrida.id_pista, id_pista);
+    strcpy(index_corrida.ocorrencia, ocorrencia);
+    corridas_index *found_corrida = bsearch(&index_corrida, corridas_idx, qtd_registros_corridas, sizeof(corridas_index), qsort_corridas_idx);
+    
+    char pk[TAM_CHAVE_CORRIDAS_IDX];
+    strcpy(pk, ocorrencia);
+    strcat(pk, id_pista);
+
+    if (found_corrida) {
+        
+        printf(ERRO_PK_REPETIDA, pk);
+        
+        return;
+    }              
+
+    // Verificar se a pista existe
+    pistas_index index_pista;
+    strcpy(index_pista.id_pista, id_pista);
+    pistas_index *found_pista = bsearch(&index_pista, pistas_idx, qtd_registros_pistas, sizeof(pistas_index), qsort_pistas_idx);
+
+    if (!found_pista) {
+        printf(ERRO_REGISTRO_NAO_ENCONTRADO);
+        return;
+    }
+    
+    // Verificar se os corredores e veículos existem e se os corredores possuem os veículos
+    int j = 0;
+    bool retorno_possui_veiculo = false;
+    for (int i = 0; i < strlen(id_corredores); i += TAM_ID_CORREDOR, j++) {
+        // Verificar se o corredor existe
+        Corredor corredor;
+
+        char id_corredor[TAM_ID_CORREDOR], *p;
+        p = id_corredores + j*(TAM_ID_CORREDOR-1);
+        
+        corredores_index index_corredor;
+        strncpy(id_corredor, p, TAM_ID_CORREDOR-1);
+        id_corredor[TAM_ID_CORREDOR-1] = '\0';
+        strcpy(index_corredor.id_corredor, id_corredor);
+        
+        //corredores_index *found_corredor = busca_binaria((void*)&index_corredor, veiculos_idx, qtd_registros_veiculos, sizeof(corredores_index), qsort_corredores_idx, false, 0);
+        corredores_index *found_corredor = bsearch(&index_corredor, corredores_idx, qtd_registros_corredores, sizeof(corredores_index) , qsort_corredores_idx);
+
+        if (!found_corredor) {
+            printf(ERRO_REGISTRO_NAO_ENCONTRADO);
+            return;
+        }
+        
+        corredor = recuperar_registro_corredor(found_corredor->rrn);
+
+        // Verificar se o veículo existe
+        char id_veiculo[TAM_ID_VEICULO];
+        p = id_veiculos + j*(TAM_ID_VEICULO-1);
+
+        strncpy(id_veiculo, p, TAM_ID_VEICULO-1);
+        id_veiculo[TAM_ID_VEICULO-1] = '\0';
+
+        //Buscar veículo no índice veiculos_idx
+        veiculos_index index_veiculo;
+        strcpy(index_veiculo.id_veiculo, id_veiculo);
+        veiculos_index *found_veiculo = bsearch(&index_veiculo, veiculos_idx, qtd_registros_veiculos, sizeof(veiculos_index), qsort_veiculos_idx);
+
+        if (found_veiculo) {
+            //Verificar se corredor possui o veículo
+            Veiculo veiculo;
+            veiculo = recuperar_registro_veiculo(found_veiculo->rrn);
+
+            bool possui_veiculo = false;
+            for (int k=0; k<QTD_MAX_VEICULO; k++) {
+                if (!strcmp(veiculo.modelo, corredor.veiculos[k])) {
+                    possui_veiculo = true;
+                }
+
+            }
+            if (!possui_veiculo) {
+                retorno_possui_veiculo = true;
+                printf(ERRO_CORREDOR_VEICULO, found_corredor->id_corredor, veiculo.id_veiculo);
+            }
+        }
+        else {
+            printf(ERRO_REGISTRO_NAO_ENCONTRADO);
+            return;
+        }
+
+    }
+    if (retorno_possui_veiculo) {
+        return;
+    }
+
+    // Calcular o valor total arrecadado na corrida e distribuir os prêmios
+    Pista pista = recuperar_registro_pista(found_pista->rrn);
+
+    double valor_total = 6 * (TX_FIXA * pista.dificuldade);
+    double premio_primeiro = valor_total * 0.4;
+    double premio_segundo = valor_total * 0.3;
+    double premio_terceiro = valor_total * 0.2;
+
+    // Adicionar os prêmios ao saldo dos corredores
+    char *p;
+    for (int i=0; i<3; i++) {
+        Corredor c;
+        
+        p = id_corredores + i*(TAM_ID_CORREDOR-1);
+
+        corredores_index index_corredor;
+        strncpy(index_corredor.id_corredor, p, TAM_ID_CORREDOR-1);
+        index_corredor.id_corredor[TAM_ID_CORREDOR-1] = '\0';
+        
+        corredores_index *found_corredor = bsearch(&index_corredor, corredores_idx, qtd_registros_corredores, sizeof(corredores_index) , qsort_corredores_idx);
+
+        c = recuperar_registro_corredor(found_corredor->rrn);
+        
+        if (i==0)
+            c.saldo += premio_primeiro;
+
+        if (i==1)
+            c.saldo += premio_segundo;
+
+        if (i==2)
+            c.saldo += premio_terceiro;
+
+        escrever_registro_corredor(c, found_corredor->rrn);
+
+    }
+
+    if (retorno_possui_veiculo) {
+        return;
+    }
+    
+
+    // Inserir a nova corrida no banco de dados
+    Corrida nova_corrida;
+    strcpy(nova_corrida.id_pista, id_pista);
+    strcpy(nova_corrida.ocorrencia, ocorrencia);
+    strcpy(nova_corrida.id_corredores, id_corredores);
+    strcpy(nova_corrida.id_veiculos, id_veiculos);
+    escrever_registro_corrida(nova_corrida, qtd_registros_corridas);
+
+    // Atualizar o índice de corridas
+    strcpy(corridas_idx[qtd_registros_corridas].id_pista, id_pista);
+    strcpy(corridas_idx[qtd_registros_corridas].ocorrencia, ocorrencia);
+    corridas_idx[qtd_registros_corridas].rrn = qtd_registros_corridas;
+    qtd_registros_corridas++;
+
+    // Reordenar o índice de corridas
+    qsort(corridas_idx, qtd_registros_corridas, sizeof(corridas_index), qsort_corridas_idx);
+
+    printf(SUCESSO);
 }
 
 /* Busca */
