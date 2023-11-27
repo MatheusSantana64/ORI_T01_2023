@@ -208,8 +208,6 @@ void criar_preco_veiculo_idx() {
 }
 
 void criar_corredor_veiculos_idx() {
-    printf("DEBUG: Entrou na função criar_corredor_veiculos_idx.\n");
-
     // Alocação de memória
     if (corredor_veiculos_idx.corredor_veiculos_primario_idx)
         free(corredor_veiculos_idx.corredor_veiculos_primario_idx);
@@ -219,8 +217,6 @@ void criar_corredor_veiculos_idx() {
     corredor_veiculos_idx.corredor_veiculos_primario_idx = malloc(MAX_REGISTROS * sizeof(corredor_veiculos_primario_index));
     corredor_veiculos_idx.corredor_veiculos_secundario_idx = malloc(MAX_REGISTROS * sizeof(corredor_veiculos_secundario_index));
 
-    printf("DEBUG: Memória alocada para os índices.\n");
-
     // Verificação de alocação de memória
     if (!corredor_veiculos_idx.corredor_veiculos_primario_idx || !corredor_veiculos_idx.corredor_veiculos_secundario_idx) {
         printf(ERRO_MEMORIA_INSUFICIENTE);
@@ -228,55 +224,24 @@ void criar_corredor_veiculos_idx() {
     }
 
     // Criação do índice primário
-    printf("DEBUG: Iniciando a criação do índice primário.\n");
     for (unsigned i = 0; i < qtd_registros_corredores; ++i) {
-        printf("DEBUG: Iteração %u do loop de criação do índice primário.\n", i);
         Corredor c = recuperar_registro_corredor(i);
 
         if (strncmp(c.id_corredor, "*|", 2) == 0)
             continue; // registro excluído
 
-        printf("DEBUG: Corredor recuperado: %s\n", c.id_corredor);
-
         strcpy(corredor_veiculos_idx.corredor_veiculos_primario_idx[i].chave_primaria, c.id_corredor);
         corredor_veiculos_idx.corredor_veiculos_primario_idx[i].proximo_indice = -1; // inicialmente, não há próximo índice
-
-        printf("DEBUG: Chave primária inserida no índice: %s\n", corredor_veiculos_idx.corredor_veiculos_primario_idx[i].chave_primaria);
     }
-    printf("DEBUG: Índice primário criado.\n");
-
     // Criação do índice secundário
-    printf("DEBUG: Iniciando a criação do índice secundário.\n");
     for (unsigned i = 0; i < qtd_registros_veiculos; ++i) {
-        printf("DEBUG: Iteração %u do loop de criação do índice secundário.\n", i);
         Veiculo v = recuperar_registro_veiculo(i);
 
         if (strncmp(v.id_veiculo, "*|", 2) == 0)
             continue; // registro excluído
 
-        printf("DEBUG: Veículo recuperado: %s\n", v.id_veiculo);
-
         strcpy(corredor_veiculos_idx.corredor_veiculos_secundario_idx[i].chave_secundaria, v.modelo);
         corredor_veiculos_idx.corredor_veiculos_secundario_idx[i].primeiro_indice = -1; // inicialmente, não há primeiro índice
-
-        printf("DEBUG: Chave secundária inserida no índice: %s\n", corredor_veiculos_idx.corredor_veiculos_secundario_idx[i].chave_secundaria);
-    }
-    printf("DEBUG: Índice secundário criado.\n");
-
-    // Ordenação dos índices
-    printf("DEBUG: Iniciando a ordenação dos índices.\n");
-    qsort(corredor_veiculos_idx.corredor_veiculos_secundario_idx, qtd_registros_veiculos, sizeof(corredor_veiculos_secundario_index), qsort_corredor_veiculos_secundario_idx);
-    printf("DEBUG: Índice secundário ordenado.\n");
-
-    printf("DEBUG: Índices criados com sucesso.\n");
-    printf("DEBUG: Índice primário:\n");
-    for (unsigned i = 0; i < qtd_registros_corredores; ++i) {
-        printf("DEBUG: Chave primária: %s, Próximo índice: %d\n", corredor_veiculos_idx.corredor_veiculos_primario_idx[i].chave_primaria, corredor_veiculos_idx.corredor_veiculos_primario_idx[i].proximo_indice);
-    }
-
-    printf("DEBUG: Índice secundário:\n");
-    for (unsigned i = 0; i < qtd_registros_veiculos; ++i) {
-        printf("DEBUG: Chave secundária: %s, Primeiro índice: %d\n", corredor_veiculos_idx.corredor_veiculos_secundario_idx[i].chave_secundaria, corredor_veiculos_idx.corredor_veiculos_secundario_idx[i].primeiro_indice);
     }
 
     printf(INDICE_CRIADO, "corredor_veiculos_idx");
@@ -631,7 +596,7 @@ void comprar_veiculo_menu(char *id_corredor, char *id_veiculo) {
         return;
     }
 
-    // Recuperar o registro do corredor e do veículo
+    // Recuperar os registros do corredor e do veículo
     Corredor corredor = recuperar_registro_corredor(corredor_encontrado->rrn);
     Veiculo veiculo = recuperar_registro_veiculo(veiculo_encontrado->rrn);
 
@@ -642,15 +607,15 @@ void comprar_veiculo_menu(char *id_corredor, char *id_veiculo) {
     }
 
     // Verificar se o corredor já possui o veículo
-    for (int i = 0; i < QTD_MAX_VEICULO; i++) {
+    for (int i = 0; i < QTD_MAX_VEICULO; ++i) {
         if (strcmp(corredor.veiculos[i], veiculo.modelo) == 0) {
-            printf(ERRO_VEICULO_REPETIDO, corredor.id_corredor, veiculo.id_veiculo);
+            printf(ERRO_VEICULO_REPETIDO, id_corredor, id_veiculo);
             return;
         }
     }
 
     // Adicionar o veículo à lista de veículos do corredor
-    for (int i = 0; i < QTD_MAX_VEICULO; i++) {
+    for (int i = 0; i < QTD_MAX_VEICULO; ++i) {
         if (corredor.veiculos[i][0] == '\0') {
             strcpy(corredor.veiculos[i], veiculo.modelo);
             break;
@@ -662,6 +627,9 @@ void comprar_veiculo_menu(char *id_corredor, char *id_veiculo) {
 
     // Escrever o registro do corredor de volta no arquivo de dados
     escrever_registro_corredor(corredor, corredor_encontrado->rrn);
+
+    // Atualizar o índice corredor_veiculos_idx
+    inverted_list_insert(veiculo.modelo, corredor.id_corredor, &corredor_veiculos_idx);
 
     printf(SUCESSO);
 }
@@ -999,7 +967,7 @@ void imprimir_corredor_veiculos_secundario_idx_menu() {
         printf(ERRO_ARQUIVO_VAZIO);
     else
         for (unsigned i = 0; i < corredor_veiculos_idx.qtd_registros_secundario; ++i)
-            printf("%s, %d\n", corredor_veiculos_idx.corredor_veiculos_secundario_idx[i].chave_secundaria, corredor_veiculos_idx.corredor_veiculos_secundario_idx[i].primeiro_indice);
+            printf("%s, %d\n", strupr(corredor_veiculos_idx.corredor_veiculos_secundario_idx[i].chave_secundaria), corredor_veiculos_idx.corredor_veiculos_secundario_idx[i].primeiro_indice);
 }
 
 void imprimir_corredor_veiculos_primario_idx_menu() {
@@ -1007,7 +975,7 @@ void imprimir_corredor_veiculos_primario_idx_menu() {
         printf(ERRO_ARQUIVO_VAZIO);
     else
         for (unsigned i = 0; i < corredor_veiculos_idx.qtd_registros_primario; ++i)
-            printf("%s, %d\n", corredor_veiculos_idx.corredor_veiculos_primario_idx[i].chave_primaria, corredor_veiculos_idx.corredor_veiculos_primario_idx[i].proximo_indice);
+            printf("%s, %d\n", corredor_veiculos_idx.corredor_veiculos_primario_idx[i].chave_primaria, corredor_veiculos_idx.corredor_veiculos_primario_idx[i].proximo_indice == -1 ? -1 : corredor_veiculos_idx.corredor_veiculos_primario_idx[i].proximo_indice);
 }
 
 /* Liberar memória e encerrar programa */
@@ -1054,20 +1022,47 @@ void liberar_memoria_menu() {
 }
 
 void inverted_list_insert(char *chave_secundaria, char *chave_primaria, inverted_list *t) {
-	/*IMPLEMENTE A FUNÇÃO AQUI*/
-	printf(ERRO_NAO_IMPLEMENTADO, "inverted_list_insert()");
+    int indice_secundario;
+    if (!inverted_list_secondary_search(&indice_secundario, false, chave_secundaria, t)) {
+        indice_secundario = t->qtd_registros_secundario++;
+        strcpy(t->corredor_veiculos_secundario_idx[indice_secundario].chave_secundaria, chave_secundaria);
+        t->corredor_veiculos_secundario_idx[indice_secundario].primeiro_indice = t->qtd_registros_primario;
+    } else {
+        // Atualiza o campo proximo_indice do registro primário anterior
+        t->corredor_veiculos_primario_idx[t->corredor_veiculos_secundario_idx[indice_secundario].primeiro_indice].proximo_indice = t->qtd_registros_primario;
+    }
+    // Insere a nova chave primária
+    strcpy(t->corredor_veiculos_primario_idx[t->qtd_registros_primario].chave_primaria, chave_primaria);
+    t->corredor_veiculos_primario_idx[t->qtd_registros_primario].proximo_indice = -1;
+    // Atualiza o campo primeiro_indice do registro secundário
+    t->corredor_veiculos_secundario_idx[indice_secundario].primeiro_indice = t->qtd_registros_primario++;
 }
 
 bool inverted_list_secondary_search(int *result, bool exibir_caminho, char *chave_secundaria, inverted_list *t) {
-	/*IMPLEMENTE A FUNÇÃO AQUI*/
-	printf(ERRO_NAO_IMPLEMENTADO, "inverted_list_secondary_search()");
-	return false;
+    for (unsigned i = 0; i < t->qtd_registros_secundario; ++i) {
+        if (strcmp(t->corredor_veiculos_secundario_idx[i].chave_secundaria, chave_secundaria) == 0) {
+            if (result != NULL) {
+                *result = t->corredor_veiculos_secundario_idx[i].primeiro_indice;
+            }
+            return true;
+        }
+    }
+    return false;
 }
 
 int inverted_list_primary_search(char result[][TAM_ID_CORREDOR], bool exibir_caminho, int indice, int *indice_final, inverted_list *t) {
-	/*IMPLEMENTE A FUNÇÃO AQUI*/
-	printf(ERRO_NAO_IMPLEMENTADO, "inverted_list_primary_search()");
-	return -1;
+    int count = 0;
+    while (indice != -1) {
+        if (result != NULL) {
+            strcpy(result[count], t->corredor_veiculos_primario_idx[indice].chave_primaria);
+        }
+        count++;
+        indice = t->corredor_veiculos_primario_idx[indice].proximo_indice;
+    }
+    if (indice_final != NULL) {
+        *indice_final = indice;
+    }
+    return count;
 }
 
 
